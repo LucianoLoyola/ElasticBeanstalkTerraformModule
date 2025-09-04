@@ -106,3 +106,37 @@ output "environment_version_label" {
   description = "Version label of the environment"
   value       = aws_elastic_beanstalk_environment.this.version_label
 }
+
+# ==============================================================================
+# IAM ROLES OUTPUTS
+# ==============================================================================
+
+output "service_role_arn" {
+  description = "ARN of the Elastic Beanstalk service role"
+  value       = var.create_iam_roles ? aws_iam_role.beanstalk_service_role[0].arn : null
+}
+
+output "service_role_name" {
+  description = "Name of the Elastic Beanstalk service role"
+  value       = var.create_iam_roles ? aws_iam_role.beanstalk_service_role[0].name : null
+}
+
+output "ec2_instance_role_arn" {
+  description = "ARN of the EC2 instance role"
+  value       = var.create_iam_roles ? aws_iam_role.beanstalk_ec2_role[0].arn : null
+}
+
+output "ec2_instance_role_name" {
+  description = "Name of the EC2 instance role"
+  value       = var.create_iam_roles ? aws_iam_role.beanstalk_ec2_role[0].name : null
+}
+
+output "ec2_instance_profile_arn" {
+  description = "ARN of the EC2 instance profile"
+  value       = var.create_iam_roles ? aws_iam_instance_profile.beanstalk_ec2_profile[0].arn : null
+}
+
+output "ec2_instance_profile_name" {
+  description = "Name of the EC2 instance profile"
+  value       = var.create_iam_roles ? aws_iam_instance_profile.beanstalk_ec2_profile[0].name : null
+}

@@ -11,6 +11,10 @@ locals {
   solution_stack_name = var.solution_stack_name != null ? var.solution_stack_name : (
     var.platform_arn != null ? null : data.aws_elastic_beanstalk_solution_stack.latest[0].name
   )
+  
+  # Referencias a los roles IAM (creados o externos)
+  service_role_name = var.create_iam_roles ? aws_iam_role.beanstalk_service_role[0].name : var.service_role_name
+  instance_profile_name = var.create_iam_roles ? aws_iam_instance_profile.beanstalk_ec2_profile[0].name : var.ec2_instance_role_name
 }
 
 # Elastic Beanstalk Application
@@ -78,6 +82,7 @@ resource "aws_elastic_beanstalk_environment" "this" {
   wait_for_ready_timeout = var.wait_for_ready_timeout
   poll_interval          = var.poll_interval
 
+  # Settings configurados por el usuario
   dynamic "setting" {
     for_each = var.environment_settings
     content {
@@ -88,11 +93,151 @@ resource "aws_elastic_beanstalk_environment" "this" {
     }
   }
 
+  # Settings automáticos para IAM (si está habilitado)
+  dynamic "setting" {
+    for_each = var.create_iam_roles && var.auto_configure_iam_settings ? [1] : []
+    content {
+      namespace = "aws:autoscaling:launchconfiguration"
+      name      = "IamInstanceProfile"
+      value     = local.instance_profile_name
+    }
+  }
+
+  dynamic "setting" {
+    for_each = var.create_iam_roles && var.auto_configure_iam_settings ? [1] : []
+    content {
+      namespace = "aws:elasticbeanstalk:environment"
+      name      = "ServiceRole"
+      value     = local.service_role_name
+    }
+  }
+
   tags = var.tags
 
   depends_on = [
     aws_elastic_beanstalk_application.this,
     aws_elastic_beanstalk_application_version.this,
-    aws_elastic_beanstalk_configuration_template.this
+    aws_elastic_beanstalk_configuration_template.this,
+    aws_iam_role.beanstalk_service_role,
+    aws_iam_instance_profile.beanstalk_ec2_profile
   ]
+}
+
+# ==============================================================================
+# IAM ROLES para ELASTIC BEANSTALK
+# ==============================================================================
+
+# IAM Role para el servicio de Elastic Beanstalk
+resource "aws_iam_role" "beanstalk_service_role" {
+  count = var.create_iam_roles ? 1 : 0
+  
+  name = var.service_role_name
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "elasticbeanstalk.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+# Políticas para el rol de servicio
+resource "aws_iam_role_policy_attachment" "beanstalk_service_health" {
+  count      = var.create_iam_roles ? 1 : 0
+  role       = aws_iam_role.beanstalk_service_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth"
+}
+
+resource "aws_iam_role_policy_attachment" "beanstalk_service_managed_updates" {
+  count      = var.create_iam_roles ? 1 : 0
+  role       = aws_iam_role.beanstalk_service_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy"
+}
+
+# IAM Role para las instancias EC2
+resource "aws_iam_role" "beanstalk_ec2_role" {
+  count = var.create_iam_roles ? 1 : 0
+  
+  name = var.ec2_instance_role_name
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+# Políticas para el rol de instancia EC2
+resource "aws_iam_role_policy_attachment" "beanstalk_ec2_web_tier" {
+  count      = var.create_iam_roles ? 1 : 0
+  role       = aws_iam_role.beanstalk_ec2_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier"
+}
+
+resource "aws_iam_role_policy_attachment" "beanstalk_ec2_worker_tier" {
+  count      = var.create_iam_roles ? 1 : 0
+  role       = aws_iam_role.beanstalk_ec2_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier"
+}
+
+resource "aws_iam_role_policy_attachment" "beanstalk_ec2_multicontainer" {
+  count      = var.create_iam_roles ? 1 : 0
+  role       = aws_iam_role.beanstalk_ec2_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
+}
+
+# Política personalizada para S3 y CloudWatch (opcional pero recomendada)
+resource "aws_iam_role_policy" "beanstalk_ec2_additional" {
+  count = var.create_iam_roles && var.attach_additional_policies ? 1 : 0
+  name  = "${var.ec2_instance_role_name}-additional-policy"
+  role  = aws_iam_role.beanstalk_ec2_role[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = [
+          "arn:aws:s3:::elasticbeanstalk-*",
+          "arn:aws:s3:::elasticbeanstalk-*/*",
+          "arn:aws:logs:*:*:log-group:/aws/elasticbeanstalk*"
+        ]
+      }
+    ]
+  })
+}
+
+# Instance Profile para el rol de EC2
+resource "aws_iam_instance_profile" "beanstalk_ec2_profile" {
+  count = var.create_iam_roles ? 1 : 0
+  name  = var.ec2_instance_role_name
+  role  = aws_iam_role.beanstalk_ec2_role[0].name
+
+  tags = var.tags
 }

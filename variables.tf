@@ -170,3 +170,37 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# ==============================================================================
+# IAM ROLES VARIABLES
+# ==============================================================================
+
+variable "create_iam_roles" {
+  description = "Whether to create IAM roles for Elastic Beanstalk"
+  type        = bool
+  default     = true
+}
+
+variable "service_role_name" {
+  description = "Name for the Elastic Beanstalk service role"
+  type        = string
+  default     = "aws-elasticbeanstalk-service-role"
+}
+
+variable "ec2_instance_role_name" {
+  description = "Name for the EC2 instance role"
+  type        = string
+  default     = "aws-elasticbeanstalk-ec2-role"
+}
+
+variable "attach_additional_policies" {
+  description = "Whether to attach additional policies for S3 and CloudWatch access"
+  type        = bool
+  default     = true
+}
+
+variable "auto_configure_iam_settings" {
+  description = "Whether to automatically add IAM configuration to environment settings"
+  type        = bool
+  default     = true
+}
