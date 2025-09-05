@@ -2,24 +2,6 @@
 
 Este módulo está optimizado para ser usado con Terragrunt. Aquí tienes ejemplos de configuración:
 
-## Estructura Recomendada
-
-```
-project/
-├── terragrunt.hcl (configuración raíz)
-├── modules/
-│   └── elastic-beanstalk/ (este módulo)
-└── environments/
-    ├── dev/
-    │   └── app/
-    │       └── terragrunt.hcl
-    ├── staging/
-    │   └── app/
-    │       └── terragrunt.hcl
-    └── prod/
-        └── app/
-            └── terragrunt.hcl
-```
 
 ## Ejemplo Básico - Desarrollo
 

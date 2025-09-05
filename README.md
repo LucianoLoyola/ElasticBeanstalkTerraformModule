@@ -73,9 +73,6 @@ Ver la carpeta `examples/` para configuraciones específicas:
 - `complete-example.tf` - Aplicación con load balancer
 - `worker-example.tf` - Ambiente worker
 
-## Configuraciones Preestablecidas
-
-Ver `PRESETS.md` para configuraciones comunes según el tipo de aplicación.
 
 ## Requisitos
 
