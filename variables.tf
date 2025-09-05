@@ -439,3 +439,71 @@ variable "application_environment_variables" {
   type        = map(string)
   default     = {}
 }
+
+# ==============================================================================
+# SECURITY GROUP CONFIGURATION
+# ==============================================================================
+
+variable "create_security_groups" {
+  description = "Whether to create custom security groups for Elastic Beanstalk"
+  type        = bool
+  default     = false
+}
+
+variable "security_group_name" {
+  description = "Name for the custom security group. If not provided, will use application_name-sg"
+  type        = string
+  default     = null
+}
+
+variable "security_group_description" {
+  description = "Description for the custom security group"
+  type        = string
+  default     = "Security group for Elastic Beanstalk environment"
+}
+
+variable "security_group_ingress_rules" {
+  description = "List of ingress rules for the security group"
+  type = list(object({
+    description      = optional(string)
+    from_port        = number
+    to_port          = number
+    protocol         = string
+    cidr_blocks      = optional(list(string))
+    ipv6_cidr_blocks = optional(list(string))
+    prefix_list_ids  = optional(list(string))
+    security_groups  = optional(list(string))
+    self             = optional(bool)
+  }))
+  default = []
+}
+
+variable "security_group_egress_rules" {
+  description = "List of egress rules for the security group"
+  type = list(object({
+    description      = optional(string)
+    from_port        = number
+    to_port          = number
+    protocol         = string
+    cidr_blocks      = optional(list(string))
+    ipv6_cidr_blocks = optional(list(string))
+    prefix_list_ids  = optional(list(string))
+    security_groups  = optional(list(string))
+    self             = optional(bool)
+  }))
+  default = [
+    {
+      description = "All outbound traffic"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+}
+
+variable "additional_security_group_ids" {
+  description = "List of additional security group IDs to attach to EC2 instances"
+  type        = list(string)
+  default     = []
+}

@@ -171,6 +171,16 @@ locals {
       }
     ] : [],
 
+    # Security Groups settings
+    var.create_security_groups || length(var.additional_security_group_ids) > 0 ? [{
+      namespace = "aws:autoscaling:launchconfiguration"
+      name      = "SecurityGroups"
+      value     = join(",", concat(
+        var.create_security_groups ? [aws_security_group.beanstalk_ec2_sg[0].id] : [],
+        var.additional_security_group_ids
+      ))
+    }] : [],
+
     # Application Environment Variables
     [for key, value in var.application_environment_variables : {
       namespace = "aws:elasticbeanstalk:application:environment"
@@ -294,6 +304,59 @@ resource "aws_elastic_beanstalk_environment" "this" {
     aws_iam_role.beanstalk_service_role,
     aws_iam_instance_profile.beanstalk_ec2_profile
   ]
+}
+
+# ==============================================================================
+# SECURITY GROUPS PARA ELASTIC BEANSTALK
+# ==============================================================================
+
+# Security Group personalizado para las instancias EC2
+resource "aws_security_group" "beanstalk_ec2_sg" {
+  count = var.create_security_groups ? 1 : 0
+
+  name        = coalesce(var.security_group_name, "${var.application_name}-sg")
+  description = var.security_group_description
+  vpc_id      = var.vpc_id
+
+  tags = merge(var.tags, {
+    Name = coalesce(var.security_group_name, "${var.application_name}-sg")
+  })
+}
+
+# Reglas de ingreso personalizables
+resource "aws_security_group_rule" "ingress" {
+  count = var.create_security_groups ? length(var.security_group_ingress_rules) : 0
+
+  type              = "ingress"
+  security_group_id = aws_security_group.beanstalk_ec2_sg[0].id
+
+  from_port                = var.security_group_ingress_rules[count.index].from_port
+  to_port                  = var.security_group_ingress_rules[count.index].to_port
+  protocol                 = var.security_group_ingress_rules[count.index].protocol
+  cidr_blocks              = lookup(var.security_group_ingress_rules[count.index], "cidr_blocks", null)
+  ipv6_cidr_blocks         = lookup(var.security_group_ingress_rules[count.index], "ipv6_cidr_blocks", null)
+  prefix_list_ids          = lookup(var.security_group_ingress_rules[count.index], "prefix_list_ids", null)
+  source_security_group_id = try(length(var.security_group_ingress_rules[count.index].security_groups) > 0 ? var.security_group_ingress_rules[count.index].security_groups[0] : null, null)
+  self                     = lookup(var.security_group_ingress_rules[count.index], "self", null)
+  description              = lookup(var.security_group_ingress_rules[count.index], "description", null)
+}
+
+# Reglas de egreso personalizables
+resource "aws_security_group_rule" "egress" {
+  count = var.create_security_groups ? length(var.security_group_egress_rules) : 0
+
+  type              = "egress"
+  security_group_id = aws_security_group.beanstalk_ec2_sg[0].id
+
+  from_port                = var.security_group_egress_rules[count.index].from_port
+  to_port                  = var.security_group_egress_rules[count.index].to_port
+  protocol                 = var.security_group_egress_rules[count.index].protocol
+  cidr_blocks              = lookup(var.security_group_egress_rules[count.index], "cidr_blocks", null)
+  ipv6_cidr_blocks         = lookup(var.security_group_egress_rules[count.index], "ipv6_cidr_blocks", null)
+  prefix_list_ids          = lookup(var.security_group_egress_rules[count.index], "prefix_list_ids", null)
+  source_security_group_id = try(length(var.security_group_egress_rules[count.index].security_groups) > 0 ? var.security_group_egress_rules[count.index].security_groups[0] : null, null)
+  self                     = lookup(var.security_group_egress_rules[count.index], "self", null)
+  description              = lookup(var.security_group_egress_rules[count.index], "description", null)
 }
 
 # ==============================================================================

@@ -10,6 +10,7 @@ Módulo de Terraform para desplegar aplicaciones en AWS Elastic Beanstalk. Compa
 - ✅ Ambientes Web Server y Worker
 - ✅ **Gestión automática de colas SQS para Workers**
 - ✅ **Soporte para Dead Letter Queues (DLQ)**
+- ✅ **Security Groups personalizados con reglas configurables**
 - ✅ Auto-detección de solution stacks
 - ✅ Soporte completo para configuraciones personalizadas
 - ✅ **IAM Roles con políticas personalizadas**
@@ -220,6 +221,96 @@ inputs = {
   ]
 }
 
+
+## Security Groups Personalizados
+
+El módulo permite crear security groups personalizados con reglas de ingreso y egreso configurables:
+
+```hcl
+inputs = {
+  # Habilitar creación de security groups personalizados
+  create_security_groups = true
+  security_group_name = "my-app-web-sg"
+  security_group_description = "Security group for my web application"
+
+  # Reglas de ingreso (tráfico entrante)
+  security_group_ingress_rules = [
+    {
+      description = "HTTP from internet"
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    },
+    {
+      description = "HTTPS from internet"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    },
+    {
+      description = "SSH from VPC only"
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.0.0/16"]
+    },
+    {
+      description = "App port from ALB"
+      from_port   = 8080
+      to_port     = 8080
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.0.0/8"]
+    }
+  ]
+
+  # Reglas de egreso (tráfico saliente)
+  security_group_egress_rules = [
+    {
+      description = "All outbound traffic"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+
+  # Security groups adicionales (opcionales)
+  additional_security_group_ids = ["sg-existing-xxxxxxxxx"]
+}
+```
+
+### Opciones Avanzadas de Security Groups
+
+```hcl
+# Regla con referencia a otro security group
+{
+  description     = "Database access"
+  from_port       = 3306
+  to_port         = 3306
+  protocol        = "tcp"
+  security_groups = ["sg-database-xxxxxxxxx"]
+}
+
+# Regla self-referencing
+{
+  description = "Inter-instance communication"
+  from_port   = 8080
+  to_port     = 8080
+  protocol    = "tcp"
+  self        = true
+}
+
+# Regla con prefix lists (para servicios AWS)
+{
+  description     = "S3 access via VPC endpoint"
+  from_port       = 443
+  to_port         = 443
+  protocol        = "tcp"
+  prefix_list_ids = ["pl-xxxxxxxxx"]
+}
+```
 
 ## Requisitos
 

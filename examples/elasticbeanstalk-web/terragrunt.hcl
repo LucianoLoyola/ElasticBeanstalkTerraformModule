@@ -86,6 +86,58 @@ inputs = {
     "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
   ]
   
+  # === CONFIGURACIÓN DE SECURITY GROUPS ===
+  # Crear security groups personalizados
+  create_security_groups = true
+  security_group_name = "express-demo-app-web-sg"
+  security_group_description = "Security group for Express Demo App web environment"
+  
+  # Reglas de ingreso personalizadas
+  security_group_ingress_rules = [
+    {
+      description = "HTTP access from ALB"
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.0.0/8"]
+    },
+    {
+      description = "HTTPS access from ALB"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.0.0/8"]
+    },
+    {
+      description = "SSH access for debugging"
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.0.0/16"]  # Solo desde la VPC
+    },
+    {
+      description = "Application port"
+      from_port   = 8080
+      to_port     = 8080
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.0.0/8"]
+    }
+  ]
+  
+  # Reglas de egreso (por defecto permite todo el tráfico saliente)
+  security_group_egress_rules = [
+    {
+      description = "All outbound traffic"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+  
+  # Security groups adicionales (si los necesitas)
+  # additional_security_group_ids = ["sg-xxxxxxxxx"]
+  
   # Configuraciones adicionales específicas (si es necesario)
   environment_settings = []
   

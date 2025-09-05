@@ -207,3 +207,27 @@ output "sqs_dlq_policy_id" {
   description = "ID of the SQS dead letter queue policy"
   value       = var.create_sqs_queue && var.environment_tier == "Worker" && var.sqs_dlq_enabled ? aws_sqs_queue_policy.worker_dlq_policy[0].id : null
 }
+
+# ==============================================================================
+# SECURITY GROUP OUTPUTS
+# ==============================================================================
+
+output "security_group_id" {
+  description = "ID of the created security group"
+  value       = var.create_security_groups ? aws_security_group.beanstalk_ec2_sg[0].id : null
+}
+
+output "security_group_arn" {
+  description = "ARN of the created security group"
+  value       = var.create_security_groups ? aws_security_group.beanstalk_ec2_sg[0].arn : null
+}
+
+output "security_group_name" {
+  description = "Name of the created security group"
+  value       = var.create_security_groups ? aws_security_group.beanstalk_ec2_sg[0].name : null
+}
+
+output "security_group_vpc_id" {
+  description = "VPC ID of the created security group"
+  value       = var.create_security_groups ? aws_security_group.beanstalk_ec2_sg[0].vpc_id : null
+}
