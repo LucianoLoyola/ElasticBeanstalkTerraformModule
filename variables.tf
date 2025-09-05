@@ -204,3 +204,153 @@ variable "auto_configure_iam_settings" {
   type        = bool
   default     = true
 }
+
+# Simplified Environment Configuration variables
+variable "environment_type" {
+  description = "Environment type: LoadBalanced or SingleInstance"
+  type        = string
+  default     = "LoadBalanced"
+  validation {
+    condition     = contains(["LoadBalanced", "SingleInstance"], var.environment_type)
+    error_message = "Environment type must be either 'LoadBalanced' or 'SingleInstance'."
+  }
+}
+
+variable "load_balancer_type" {
+  description = "Load balancer type: application, classic, or network"
+  type        = string
+  default     = "application"
+  validation {
+    condition     = contains(["application", "classic", "network"], var.load_balancer_type)
+    error_message = "Load balancer type must be 'application', 'classic', or 'network'."
+  }
+}
+
+variable "vpc_id" {
+  description = "VPC ID where the environment will be deployed"
+  type        = string
+  default     = null
+}
+
+variable "ec2_subnets" {
+  description = "List of subnet IDs for EC2 instances"
+  type        = list(string)
+  default     = []
+}
+
+variable "elb_subnets" {
+  description = "List of subnet IDs for the load balancer"
+  type        = list(string)
+  default     = []
+}
+
+variable "instance_types" {
+  description = "EC2 instance types for the environment"
+  type        = list(string)
+  default     = ["t3.micro"]
+}
+
+variable "auto_scaling_min_size" {
+  description = "Minimum number of instances in the Auto Scaling group"
+  type        = number
+  default     = 1
+}
+
+variable "auto_scaling_max_size" {
+  description = "Maximum number of instances in the Auto Scaling group"
+  type        = number
+  default     = 1
+}
+
+# Health Check Configuration variables
+variable "health_check_path" {
+  description = "Health check path for the application"
+  type        = string
+  default     = "/"
+}
+
+variable "health_check_interval" {
+  description = "Health check interval in seconds"
+  type        = number
+  default     = 30
+}
+
+variable "health_check_timeout" {
+  description = "Health check timeout in seconds"
+  type        = number
+  default     = 5
+}
+
+variable "healthy_threshold_count" {
+  description = "Number of consecutive successful health checks"
+  type        = number
+  default     = 2
+}
+
+variable "unhealthy_threshold_count" {
+  description = "Number of consecutive failed health checks"
+  type        = number
+  default     = 3
+}
+
+variable "health_check_http_code" {
+  description = "HTTP status code for successful health checks"
+  type        = string
+  default     = "200"
+}
+
+# SQS Worker Configuration variables
+variable "worker_queue_url" {
+  description = "SQS queue URL for worker environments"
+  type        = string
+  default     = null
+}
+
+variable "worker_http_path" {
+  description = "HTTP path for worker requests"
+  type        = string
+  default     = "/worker"
+}
+
+variable "worker_mime_type" {
+  description = "MIME type for worker requests"
+  type        = string
+  default     = "application/json"
+}
+
+variable "worker_http_connections" {
+  description = "Number of HTTP connections for worker"
+  type        = number
+  default     = 10
+}
+
+variable "worker_connect_timeout" {
+  description = "Connection timeout in seconds for worker"
+  type        = number
+  default     = 5
+}
+
+variable "worker_inactivity_timeout" {
+  description = "Inactivity timeout in seconds for worker"
+  type        = number
+  default     = 299
+}
+
+variable "worker_visibility_timeout" {
+  description = "Visibility timeout in seconds for worker"
+  type        = number
+  default     = 300
+}
+
+variable "worker_retention_period" {
+  description = "Message retention period in seconds for worker"
+  type        = number
+  default     = 345600
+}
+
+# Application Environment Variables
+variable "application_environment_variables" {
+  description = "Environment variables for the application"
+  type        = map(string)
+  default     = {}
+}

@@ -8,13 +8,129 @@ data "aws_elastic_beanstalk_solution_stack" "latest" {
 
 # Usar el stack solution obtenido si no se especifica uno
 locals {
-  solution_stack_name = var.solution_stack_name != null ? var.solution_stack_name : (
-    var.platform_arn != null ? null : data.aws_elastic_beanstalk_solution_stack.latest[0].name
-  )
-  
+  # Seleccionar solution stack basado en prioridad
+  solution_stack_name = var.solution_stack_name != null ? var.solution_stack_name : var.platform_arn != null ? null : "64bit Amazon Linux 2 v5.8.4 running Node.js 18"
+
   # Referencias a los roles IAM (creados o externos)
   service_role_name = var.create_iam_roles ? aws_iam_role.beanstalk_service_role[0].name : var.service_role_name
   instance_profile_name = var.create_iam_roles ? aws_iam_instance_profile.beanstalk_ec2_profile[0].name : var.ec2_instance_role_name
+
+  # Generate automatic settings based on simplified variables
+  automatic_settings = concat(
+    # VPC and Networking settings
+    var.vpc_id != null ? [{
+      namespace = "aws:ec2:vpc"
+      name      = "VPCId"
+      value     = var.vpc_id
+    }] : [],
+    
+    length(var.ec2_subnets) > 0 ? [{
+      namespace = "aws:ec2:vpc"
+      name      = "Subnets"
+      value     = join(",", var.ec2_subnets)
+    }] : [],
+    
+    length(var.elb_subnets) > 0 && var.environment_type == "LoadBalanced" ? [{
+      namespace = "aws:ec2:vpc"
+      name      = "ELBSubnets"
+      value     = join(",", var.elb_subnets)
+    }] : [],
+
+    # Environment Type settings
+    [{
+      namespace = "aws:elasticbeanstalk:environment"
+      name      = "EnvironmentType"
+      value     = var.environment_type
+    }],
+
+    # Load Balancer settings (only for LoadBalanced environments)
+    var.environment_type == "LoadBalanced" ? [{
+      namespace = "aws:elasticbeanstalk:environment"
+      name      = "LoadBalancerType"
+      value     = var.load_balancer_type
+    }] : [],
+
+    # Instance settings
+    [{
+      namespace = "aws:ec2:instances"
+      name      = "InstanceTypes"
+      value     = join(",", var.instance_types)
+    }],
+
+    # Auto Scaling settings (only for LoadBalanced environments)
+    var.environment_type == "LoadBalanced" ? [
+      {
+        namespace = "aws:autoscaling:asg"
+        name      = "MinSize"
+        value     = tostring(var.auto_scaling_min_size)
+      },
+      {
+        namespace = "aws:autoscaling:asg"
+        name      = "MaxSize"
+        value     = tostring(var.auto_scaling_max_size)
+      }
+    ] : [],
+
+    # Health check settings (only for Web tier with load balancer)
+    var.environment_tier == "WebServer" && var.environment_type == "LoadBalanced" ? [
+      {
+        namespace = "aws:elasticbeanstalk:application"
+        name      = "Application Healthcheck URL"
+        value     = var.health_check_path
+      }
+    ] : [],
+
+    # Worker settings (only for Worker tier)
+    var.environment_tier == "Worker" && var.worker_queue_url != null ? [
+      {
+        namespace = "aws:elasticbeanstalk:sqsd"
+        name      = "WorkerQueueURL"
+        value     = var.worker_queue_url
+      },
+      {
+        namespace = "aws:elasticbeanstalk:sqsd"
+        name      = "HttpPath"
+        value     = var.worker_http_path
+      },
+      {
+        namespace = "aws:elasticbeanstalk:sqsd"
+        name      = "MimeType"
+        value     = var.worker_mime_type
+      },
+      {
+        namespace = "aws:elasticbeanstalk:sqsd"
+        name      = "HttpConnections"
+        value     = tostring(var.worker_http_connections)
+      },
+      {
+        namespace = "aws:elasticbeanstalk:sqsd"
+        name      = "ConnectTimeout"
+        value     = tostring(var.worker_connect_timeout)
+      },
+      {
+        namespace = "aws:elasticbeanstalk:sqsd"
+        name      = "InactivityTimeout"
+        value     = tostring(var.worker_inactivity_timeout)
+      },
+      {
+        namespace = "aws:elasticbeanstalk:sqsd"
+        name      = "VisibilityTimeout"
+        value     = tostring(var.worker_visibility_timeout)
+      },
+      {
+        namespace = "aws:elasticbeanstalk:sqsd"
+        name      = "RetentionPeriod"
+        value     = tostring(var.worker_retention_period)
+      }
+    ] : [],
+
+    # Application Environment Variables
+    [for key, value in var.application_environment_variables : {
+      namespace = "aws:elasticbeanstalk:application:environment"
+      name      = key
+      value     = value
+    }]
+  )
 }
 
 # Elastic Beanstalk Application
@@ -82,7 +198,17 @@ resource "aws_elastic_beanstalk_environment" "this" {
   wait_for_ready_timeout = var.wait_for_ready_timeout
   poll_interval          = var.poll_interval
 
-  # Settings configurados por el usuario
+  # Settings automáticos generados por las variables simplificadas
+  dynamic "setting" {
+    for_each = local.automatic_settings
+    content {
+      namespace = setting.value.namespace
+      name      = setting.value.name
+      value     = setting.value.value
+    }
+  }
+
+  # Settings configurados por el usuario (se agregan además de los automáticos)
   dynamic "setting" {
     for_each = var.environment_settings
     content {
