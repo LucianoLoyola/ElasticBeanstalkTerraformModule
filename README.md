@@ -1,6 +1,6 @@
 # Módulo Terraform para AWS Elastic Beanstalk
 
-Módulo de Terraform para desplegar aplicaciones en AWS Elastic Beanstalk. Compatible con Terragrunt.
+Módulo de Terraform para desplegar aplicaciones en AWS Elastic Beanstalk.
 
 ## Características
 
@@ -11,10 +11,8 @@ Módulo de Terraform para desplegar aplicaciones en AWS Elastic Beanstalk. Compa
 - ✅ **Gestión automática de colas SQS para Workers**
 - ✅ **Soporte para Dead Letter Queues (DLQ)**
 - ✅ **Security Groups personalizados con reglas configurables**
-- ✅ Auto-detección de solution stacks
 - ✅ Soporte completo para configuraciones personalizadas
 - ✅ **IAM Roles con políticas personalizadas**
-- ✅ **Configuración simplificada de variables**
 
 ## Uso con Terragrunt
 
@@ -79,15 +77,15 @@ Para la lista completa de variables y outputs, consulta `variables.tf` y `output
 ## Ejemplos
 
 Ver la carpeta `examples/` para configuraciones específicas:
-- `basic-example.tf` - Aplicación simple
-- `complete-example.tf` - Aplicación con load balancer
-- `worker-example.tf` - Ambiente worker
+- `Elasticbeanstalk-web` - Ejemplo para web server
+- `Elasticbeanstalk-worker` - Ejemplo para worker
 
 ## Gestión de Roles IAM
 
 El módulo soporta dos modos de operación para los roles IAM:
 
-### 🔧 Modo 1: Crear Roles Automáticamente (Recomendado)
+### Modo 1: Crear Roles Automáticamente
+Las policies deben estar almacenadas en el mismo directorio donde está el archivo de `terragrunt.hcl`, en una carpeta llamada "`/policies`"
 
 ```hcl
 inputs = {
@@ -106,13 +104,13 @@ inputs = {
 }
 ```
 
-**✅ Ventajas:**
+**Ventajas:**
 - El módulo crea y gestiona todos los roles
 - Soporte completo para políticas personalizadas
 - Permisos básicos incluidos automáticamente
 - Fácil de mantener
 
-### 🏗️ Modo 2: Usar Roles Existentes
+### Modo 2: Usar Roles Existentes
 
 ```hcl
 inputs = {
@@ -121,12 +119,12 @@ inputs = {
   service_role_name = "mi-role-existente-service"      # DEBE EXISTIR
   ec2_instance_role_name = "mi-role-existente-ec2"     # DEBE EXISTIR
   
-  # ❌ NO se pueden usar políticas personalizadas en este modo
+  # NO se pueden usar políticas personalizadas en este modo
   # ec2_instance_role_custom_policies = []  # Debe estar vacío
 }
 ```
 
-**⚠️ Requisitos:**
+**Requisitos:**
 - Los roles DEBEN existir previamente en AWS
 - Los roles DEBEN tener los permisos básicos de Elastic Beanstalk
 - Las políticas personalizadas se deben gestionar externamente
@@ -168,63 +166,9 @@ inputs = {
 }
 ```
 
-#### Usando Políticas Inline (Alternativa)
-
-```hcl
-inputs = {
-  # ... otras configuraciones ...
-  
-  # Políticas inline personalizadas para el Service Role
-  service_role_custom_policies = [
-    {
-      name = "CustomS3Access"
-      policy = jsonencode({
-        Version = "2012-10-17"
-        Statement = [
-          {
-            Effect = "Allow"
-            Action = [
-              "s3:GetObject",
-              "s3:PutObject"
-            ]
-            Resource = "arn:aws:s3:::mi-bucket-personalizado/*"
-          }
-        ]
-      })
-    }
-  ]
-  
-  # Políticas managed personalizadas para el EC2 Instance Role
-  ec2_instance_role_custom_managed_policies = [
-    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
-    "arn:aws:iam::123456789012:policy/MiPoliticaPersonalizada"
-  ]
-  
-  # Políticas inline personalizadas para el EC2 Instance Role
-  ec2_instance_role_custom_policies = [
-    {
-      name = "DatabaseAccess"
-      policy = jsonencode({
-        Version = "2012-10-17"
-        Statement = [
-          {
-            Effect = "Allow"
-            Action = [
-              "rds:DescribeDBInstances",
-              "rds:Connect"
-            ]
-            Resource = "*"
-          }
-        ]
-      })
-    }
-  ]
-}
-
-
 ## Security Groups Personalizados
 
-El módulo permite crear security groups personalizados con reglas de ingreso y egreso configurables:
+El módulo permite crear security groups personalizados inbound y outbound rules configurables:
 
 ```hcl
 inputs = {
@@ -281,39 +225,7 @@ inputs = {
 }
 ```
 
-### Opciones Avanzadas de Security Groups
-
-```hcl
-# Regla con referencia a otro security group
-{
-  description     = "Database access"
-  from_port       = 3306
-  to_port         = 3306
-  protocol        = "tcp"
-  security_groups = ["sg-database-xxxxxxxxx"]
-}
-
-# Regla self-referencing
-{
-  description = "Inter-instance communication"
-  from_port   = 8080
-  to_port     = 8080
-  protocol    = "tcp"
-  self        = true
-}
-
-# Regla con prefix lists (para servicios AWS)
-{
-  description     = "S3 access via VPC endpoint"
-  from_port       = 443
-  to_port         = 443
-  protocol        = "tcp"
-  prefix_list_ids = ["pl-xxxxxxxxx"]
-}
-```
-
 ## Requisitos
 
 - Terraform >= 1.0
 - AWS Provider >= 5.0
-- Roles IAM necesarios configurados
