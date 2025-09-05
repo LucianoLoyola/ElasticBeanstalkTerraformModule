@@ -55,6 +55,37 @@ inputs = {
     DEBUG = "false"
   }
   
+  # Políticas IAM personalizadas para el service role
+  service_role_custom_policies = [
+    {
+      name   = "ServiceEnhancedMonitoring"
+      policy = file("${get_terragrunt_dir()}/policies/service-enhanced-monitoring.json")
+    }
+  ]
+  
+  # Políticas managed adicionales para el service role
+  service_role_custom_managed_policies = [
+    "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService"
+  ]
+  
+  # Políticas IAM personalizadas para el entorno web
+  ec2_instance_role_custom_policies = [
+    {
+      name   = "WebMonitoringAccess"
+      policy = file("${get_terragrunt_dir()}/policies/web-monitoring-access.json")
+    },
+    {
+      name   = "WebEmailConfigAccess"
+      policy = file("${get_terragrunt_dir()}/policies/web-email-config-access.json")
+    }
+  ]
+  
+  # Políticas managed adicionales para el entorno web
+  ec2_instance_role_custom_managed_policies = [
+    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
+  ]
+  
   # Configuraciones adicionales específicas (si es necesario)
   environment_settings = []
   

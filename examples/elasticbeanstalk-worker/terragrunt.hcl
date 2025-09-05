@@ -54,6 +54,36 @@ inputs = {
     DEBUG = "false"
   }
   
+  # Políticas IAM personalizadas para el service role
+  service_role_custom_policies = [
+    {
+      name   = "WorkerServiceMonitoring"
+      policy = file("${get_terragrunt_dir()}/policies/worker-service-monitoring.json")
+    }
+  ]
+  
+  # Políticas managed adicionales para el service role
+  service_role_custom_managed_policies = [
+    "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService"
+  ]
+  
+  # Políticas IAM personalizadas cargadas desde archivos externos
+  ec2_instance_role_custom_policies = [
+    {
+      name   = "WorkerSQSFullAccess"
+      policy = file("${get_terragrunt_dir()}/policies/worker-sqs-access.json")
+    },
+    {
+      name   = "DatabaseAccess"
+      policy = file("${get_terragrunt_dir()}/policies/database-access.json")
+    }
+  ]
+  
+  # Políticas managed adicionales para monitoreo
+  ec2_instance_role_custom_managed_policies = [
+    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+  ]
+  
   # Configuraciones adicionales específicas (si es necesario)
   environment_settings = []
   

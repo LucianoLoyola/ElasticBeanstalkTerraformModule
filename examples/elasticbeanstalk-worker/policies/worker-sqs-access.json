@@ -1,0 +1,27 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sqs:*"
+      ],
+      "Resource": [
+        "arn:aws:sqs:us-west-2:600627334574:express-demo-app-worker-queue",
+        "arn:aws:sqs:us-west-2:600627334574:express-demo-app-*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::express-demo-app/*",
+        "arn:aws:s3:::express-demo-app-uploads/*"
+      ]
+    }
+  ]
+}
