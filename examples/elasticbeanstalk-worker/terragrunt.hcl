@@ -11,15 +11,15 @@ inputs = {
   application_name = "express-demo-app-worker"
   environment_name = "express-demo-app-worker"
   
-  #Configurar como Worker tier
+  # Configurar como Worker tier
   environment_tier = "Worker"
   
-  #Crear roles IAM automáticamente
+  # Crear roles IAM automáticamente
   create_iam_roles = true
   service_role_name = "express-demo-app-worker-service-role"
   ec2_instance_role_name = "express-demo-app-worker-ec2-role"
   
-  #Crear versión de aplicación desde S3
+  # Crear versión de aplicación desde S3
   create_application_version = true
   application_version = "v1.0.4-worker"
   source_bundle_bucket = "express-demo-app"
@@ -28,15 +28,31 @@ inputs = {
   #aws elasticbeanstalk list-available-solution-stacks
   solution_stack_name = "64bit Amazon Linux 2023 v6.6.4 running Node.js 22"
   
-  #Configuración de red
+  # Configuración de red
   vpc_id = "vpc-0f6a5bbd2546359df"
   ec2_subnets = ["subnet-03ce92dba629183ee", "subnet-0c782c7059d7ac402", "subnet-00bebdf8f9e7ce1b9"]
   
-  #Configuración de instancias
+  # Configuración de instancias
   instance_types = ["t3.micro"]
   
-  #Configuración específica del Worker
-  worker_queue_url = "https://sqs.us-west-2.amazonaws.com/600627334574/express-demo-app-worker-queue"
+  # === GESTIÓN DE COLA SQS ===
+  # Opción 1: Crear cola SQS automáticamente
+  create_sqs_queue = true
+  sqs_queue_name = "express-demo-app-worker-queue-v2"
+  
+  # Configuración opcional de la cola
+  sqs_queue_visibility_timeout_seconds = 300
+  sqs_queue_message_retention_seconds = 345600  # 4 days
+  sqs_queue_receive_wait_time_seconds = 10
+  
+  # Dead Letter Queue opcional
+  sqs_dlq_enabled = true
+  sqs_dlq_max_receive_count = 3
+  
+  # Opción 2: Usar cola existente (deshabilitado)
+  # worker_queue_url = "https://sqs.us-west-2.amazonaws.com/600627334574/express-demo-app-worker-queue"
+  
+  # Configuración específica del Worker
   worker_http_path = "/worker"
   worker_mime_type = "application/json"
   worker_http_connections = 10
@@ -45,7 +61,7 @@ inputs = {
   worker_visibility_timeout = 300
   worker_retention_period = 345600
   
-  #Variables de entorno de la aplicación
+  # Variables de entorno de la aplicación
   application_environment_variables = {
     NODE_ENV = "development"
     PORT = "8080"
@@ -54,7 +70,7 @@ inputs = {
     DEBUG = "false"
   }
   
-  #IAM Policies para el service role cargadas desde archivos externos
+  # Políticas IAM personalizadas para el service role
   service_role_custom_policies = [
     {
       name   = "WorkerServiceMonitoring"
@@ -62,12 +78,12 @@ inputs = {
     }
   ]
   
-  #Managed IAM Policies adicionales para el service role
+  # Políticas managed adicionales para el service role
   service_role_custom_managed_policies = [
     "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService"
   ]
   
-  #IAM Policies instance role cargadas desde archivos externos
+  # Políticas IAM personalizadas cargadas desde archivos externos
   ec2_instance_role_custom_policies = [
     {
       name   = "WorkerSQSFullAccess"
@@ -79,11 +95,11 @@ inputs = {
     }
   ]
   
-  #Managed IAM Policies adicionales para instance role
+  # Políticas managed adicionales para monitoreo
   ec2_instance_role_custom_managed_policies = [
     "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
   ]
-
+  
   #=== CONFIGURACIÓN DE SECURITY GROUPS ===
   #Crear security groups personalizados
   create_security_groups = true
