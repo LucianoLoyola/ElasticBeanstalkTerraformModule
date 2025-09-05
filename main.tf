@@ -15,6 +15,53 @@ locals {
   service_role_name = var.create_iam_roles ? aws_iam_role.beanstalk_service_role[0].name : var.service_role_name
   instance_profile_name = var.create_iam_roles ? aws_iam_instance_profile.beanstalk_ec2_profile[0].name : var.ec2_instance_role_name
 
+  # Validaciones para configuraciones conflictivas
+  custom_policies_with_existing_roles = !var.create_iam_roles && (
+    length(var.service_role_custom_policies) > 0 ||
+    length(var.ec2_instance_role_custom_policies) > 0 ||
+    length(var.service_role_custom_managed_policies) > 0 ||
+    length(var.ec2_instance_role_custom_managed_policies) > 0
+  )
+
+    using_default_role_names_without_creation = !var.create_iam_roles && (
+    var.service_role_name == "aws-elasticbeanstalk-service-role" ||
+    var.ec2_instance_role_name == "aws-elasticbeanstalk-ec2-role"
+  )
+}
+
+# ==============================================================================
+# CONFIGURATION VALIDATIONS
+# ==============================================================================
+
+# Validar que no se usen políticas personalizadas con roles existentes
+resource "null_resource" "validate_custom_policies_with_existing_roles" {
+  count = local.custom_policies_with_existing_roles ? 1 : 0
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "ERROR: Custom IAM policies cannot be used when create_iam_roles = false."
+      echo "Either set create_iam_roles = true, or manage custom policies outside this module."
+      exit 1
+    EOT
+  }
+}
+
+# Validar que no se usen nombres por defecto con roles existentes
+resource "null_resource" "validate_default_role_names_with_existing_roles" {
+  count = local.using_default_role_names_without_creation ? 1 : 0
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "ERROR: When create_iam_roles = false, you must specify existing role names."
+      echo "The default role names suggest you want to create new roles, but create_iam_roles = false."
+      echo "Either set create_iam_roles = true, or provide specific existing role names."
+      exit 1
+    EOT
+  }
+}
+
+# Segundo bloque locals para settings automáticos
+locals {
   # Generate automatic settings based on simplified variables
   automatic_settings = concat(
     # VPC and Networking settings
@@ -366,4 +413,42 @@ resource "aws_iam_instance_profile" "beanstalk_ec2_profile" {
   role  = aws_iam_role.beanstalk_ec2_role[0].name
 
   tags = var.tags
+}
+
+# ==============================================================================
+# CUSTOM IAM POLICIES
+# ==============================================================================
+
+# Custom inline policies para Service Role
+resource "aws_iam_role_policy" "service_role_custom" {
+  count = var.create_iam_roles ? length(var.service_role_custom_policies) : 0
+  
+  name   = var.service_role_custom_policies[count.index].name
+  role   = aws_iam_role.beanstalk_service_role[0].id
+  policy = var.service_role_custom_policies[count.index].policy
+}
+
+# Custom managed policies para Service Role
+resource "aws_iam_role_policy_attachment" "service_role_custom_managed" {
+  count = var.create_iam_roles ? length(var.service_role_custom_managed_policies) : 0
+  
+  role       = aws_iam_role.beanstalk_service_role[0].name
+  policy_arn = var.service_role_custom_managed_policies[count.index]
+}
+
+# Custom inline policies para EC2 Instance Role
+resource "aws_iam_role_policy" "ec2_instance_role_custom" {
+  count = var.create_iam_roles ? length(var.ec2_instance_role_custom_policies) : 0
+  
+  name   = var.ec2_instance_role_custom_policies[count.index].name
+  role   = aws_iam_role.beanstalk_ec2_role[0].id
+  policy = var.ec2_instance_role_custom_policies[count.index].policy
+}
+
+# Custom managed policies para EC2 Instance Role
+resource "aws_iam_role_policy_attachment" "ec2_instance_role_custom_managed" {
+  count = var.create_iam_roles ? length(var.ec2_instance_role_custom_managed_policies) : 0
+  
+  role       = aws_iam_role.beanstalk_ec2_role[0].name
+  policy_arn = var.ec2_instance_role_custom_managed_policies[count.index]
 }

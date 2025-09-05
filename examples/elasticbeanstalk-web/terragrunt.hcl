@@ -25,73 +25,38 @@ inputs = {
   #aws elasticbeanstalk list-available-solution-stacks
   solution_stack_name = "64bit Amazon Linux 2023 v6.6.4 running Node.js 22"
   
-  environment_settings = [
-    # Instancias
-    {
-      namespace = "aws:ec2:instances"
-      name      = "InstanceTypes"
-      value     = "t3.micro"
-    },
-    # Load Balancer
-    {
-      namespace = "aws:elasticbeanstalk:environment"
-      name      = "EnvironmentType"
-      value     = "LoadBalanced"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:environment"
-      name      = "LoadBalancerType"
-      value     = "application"
-    },
-    # Auto Scaling
-    {
-      namespace = "aws:autoscaling:asg"
-      name      = "MinSize"
-      value     = "1"
-    },
-    {
-      namespace = "aws:autoscaling:asg"
-      name      = "MaxSize"
-      value     = "1"
-    },
-    # Networking
-    {
-      namespace = "aws:ec2:vpc"
-      name      = "VPCId"
-      value     = "vpc-0f6a5bbd2546359df"
-    },
-    {
-      namespace = "aws:ec2:vpc"
-      name      = "Subnets"
-      value     = "subnet-03ce92dba629183ee,subnet-0c782c7059d7ac402,subnet-00bebdf8f9e7ce1b9"
-    },
-    {
-      namespace = "aws:ec2:vpc"
-      name      = "ELBSubnets"
-      value     = "subnet-094c810dd8345c3b5,subnet-0692800804ab0688f,subnet-0497427b04eaef497"
-    },
-    # Environment Variables
-    {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = "NODE_ENV"
-      value     = "development"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = "PORT"
-      value     = "8080"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = "ENVIRONMENT"
-      value     = "development"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = "DEBUG"
-      value     = "false"
-    }
-  ]
+  # Configuración simplificada del entorno
+  environment_type = "LoadBalanced"
+  load_balancer_type = "application"
+  
+  # Configuración de red
+  vpc_id = "vpc-0f6a5bbd2546359df"
+  ec2_subnets = ["subnet-03ce92dba629183ee", "subnet-0c782c7059d7ac402", "subnet-00bebdf8f9e7ce1b9"]
+  elb_subnets = ["subnet-094c810dd8345c3b5", "subnet-0692800804ab0688f", "subnet-0497427b04eaef497"]
+  
+  # Configuración de instancias
+  instance_types = ["t3.micro"]
+  auto_scaling_min_size = 1
+  auto_scaling_max_size = 1
+  
+  # Configuración de health check
+  health_check_path = "/health"
+  health_check_interval = 30
+  health_check_timeout = 5
+  healthy_threshold_count = 2
+  unhealthy_threshold_count = 3
+  health_check_http_code = "200"
+  
+  # Variables de entorno de la aplicación
+  application_environment_variables = {
+    NODE_ENV = "development"
+    PORT = "8080"
+    ENVIRONMENT = "development"
+    DEBUG = "false"
+  }
+  
+  # Configuraciones adicionales específicas (si es necesario)
+  environment_settings = []
   
   tags = {
     Environment = "development"

@@ -140,3 +140,24 @@ output "ec2_instance_profile_name" {
   description = "Name of the EC2 instance profile"
   value       = var.create_iam_roles ? aws_iam_instance_profile.beanstalk_ec2_profile[0].name : null
 }
+
+# Custom IAM Policies Outputs
+output "service_role_custom_policies" {
+  description = "Names of custom inline policies attached to the service role"
+  value       = var.create_iam_roles ? [for policy in aws_iam_role_policy.service_role_custom : policy.name] : []
+}
+
+output "service_role_custom_managed_policies" {
+  description = "ARNs of custom managed policies attached to the service role"
+  value       = var.service_role_custom_managed_policies
+}
+
+output "ec2_instance_role_custom_policies" {
+  description = "Names of custom inline policies attached to the EC2 instance role"
+  value       = var.create_iam_roles ? [for policy in aws_iam_role_policy.ec2_instance_role_custom : policy.name] : []
+}
+
+output "ec2_instance_role_custom_managed_policies" {
+  description = "ARNs of custom managed policies attached to the EC2 instance role"
+  value       = var.ec2_instance_role_custom_managed_policies
+}

@@ -176,7 +176,7 @@ variable "tags" {
 # ==============================================================================
 
 variable "create_iam_roles" {
-  description = "Whether to create IAM roles for Elastic Beanstalk"
+  description = "Whether to create IAM roles for Elastic Beanstalk. If false, assumes roles already exist with the specified names."
   type        = bool
   default     = true
 }
@@ -203,6 +203,37 @@ variable "auto_configure_iam_settings" {
   description = "Whether to automatically add IAM configuration to environment settings"
   type        = bool
   default     = true
+}
+
+# Custom IAM Policies
+variable "service_role_custom_policies" {
+  description = "List of custom IAM policy documents to attach to the service role. Only applies when create_iam_roles = true."
+  type = list(object({
+    name   = string
+    policy = string
+  }))
+  default = []
+}
+
+variable "ec2_instance_role_custom_policies" {
+  description = "List of custom IAM policy documents to attach to the EC2 instance role. Only applies when create_iam_roles = true."
+  type = list(object({
+    name   = string
+    policy = string
+  }))
+  default = []
+}
+
+variable "service_role_custom_managed_policies" {
+  description = "List of custom managed policy ARNs to attach to the service role. Only applies when create_iam_roles = true."
+  type        = list(string)
+  default     = []
+}
+
+variable "ec2_instance_role_custom_managed_policies" {
+  description = "List of custom managed policy ARNs to attach to the EC2 instance role. Only applies when create_iam_roles = true."
+  type        = list(string)
+  default     = []
 }
 
 # Simplified Environment Configuration variables

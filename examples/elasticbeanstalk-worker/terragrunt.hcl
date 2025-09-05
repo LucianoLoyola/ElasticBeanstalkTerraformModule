@@ -28,92 +28,34 @@ inputs = {
   #aws elasticbeanstalk list-available-solution-stacks
   solution_stack_name = "64bit Amazon Linux 2023 v6.6.4 running Node.js 22"
   
-  environment_settings = [
-    # Instancias
-    {
-      namespace = "aws:ec2:instances"
-      name      = "InstanceTypes"
-      value     = "t3.micro"
-    },
-    # Configuración SQS Worker
-    {
-      namespace = "aws:elasticbeanstalk:sqsd"
-      name      = "WorkerQueueURL"
-      value     = "https://sqs.us-west-2.amazonaws.com/600627334574/express-demo-app-worker-queue"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:sqsd"
-      name      = "HttpPath"
-      value     = "/worker"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:sqsd"
-      name      = "MimeType"
-      value     = "application/json"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:sqsd"
-      name      = "HttpConnections"
-      value     = "10"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:sqsd"
-      name      = "ConnectTimeout"
-      value     = "5"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:sqsd"
-      name      = "InactivityTimeout"
-      value     = "299"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:sqsd"
-      name      = "VisibilityTimeout"
-      value     = "300"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:sqsd"
-      name      = "RetentionPeriod"
-      value     = "345600"
-    },
-    # Networking
-    {
-      namespace = "aws:ec2:vpc"
-      name      = "VPCId"
-      value     = "vpc-0f6a5bbd2546359df"
-    },
-    {
-      namespace = "aws:ec2:vpc"
-      name      = "Subnets"
-      value     = "subnet-03ce92dba629183ee,subnet-0c782c7059d7ac402,subnet-00bebdf8f9e7ce1b9"
-    },
-    # Environment Variables para Worker
-    {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = "NODE_ENV"
-      value     = "development"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = "PORT"
-      value     = "8080"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = "ENVIRONMENT"
-      value     = "worker"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = "WORKER_MODE"
-      value     = "true"
-    },
-    {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = "DEBUG"
-      value     = "false"
-    }
-  ]
+  # Configuración de red
+  vpc_id = "vpc-0f6a5bbd2546359df"
+  ec2_subnets = ["subnet-03ce92dba629183ee", "subnet-0c782c7059d7ac402", "subnet-00bebdf8f9e7ce1b9"]
+  
+  # Configuración de instancias
+  instance_types = ["t3.micro"]
+  
+  # Configuración específica del Worker
+  worker_queue_url = "https://sqs.us-west-2.amazonaws.com/600627334574/express-demo-app-worker-queue"
+  worker_http_path = "/worker"
+  worker_mime_type = "application/json"
+  worker_http_connections = 10
+  worker_connect_timeout = 5
+  worker_inactivity_timeout = 299
+  worker_visibility_timeout = 300
+  worker_retention_period = 345600
+  
+  # Variables de entorno de la aplicación
+  application_environment_variables = {
+    NODE_ENV = "development"
+    PORT = "8080"
+    ENVIRONMENT = "worker"
+    WORKER_MODE = "true"
+    DEBUG = "false"
+  }
+  
+  # Configuraciones adicionales específicas (si es necesario)
+  environment_settings = []
   
   tags = {
     Environment = "staging"
