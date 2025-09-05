@@ -128,11 +128,11 @@ locals {
     ] : [],
 
     # Worker settings (only for Worker tier)
-    var.environment_tier == "Worker" && var.worker_queue_url != null ? [
+    var.environment_tier == "Worker" && local.effective_worker_queue_url != null ? [
       {
         namespace = "aws:elasticbeanstalk:sqsd"
         name      = "WorkerQueueURL"
-        value     = var.worker_queue_url
+        value     = local.effective_worker_queue_url
       },
       {
         namespace = "aws:elasticbeanstalk:sqsd"
@@ -451,4 +451,123 @@ resource "aws_iam_role_policy_attachment" "ec2_instance_role_custom_managed" {
   
   role       = aws_iam_role.beanstalk_ec2_role[0].name
   policy_arn = var.ec2_instance_role_custom_managed_policies[count.index]
+}
+
+# ==============================================================================
+# SQS RESOURCES FOR WORKER ENVIRONMENTS
+# ==============================================================================
+
+# Dead Letter Queue (opcional)
+resource "aws_sqs_queue" "worker_dlq" {
+  count = var.create_sqs_queue && var.environment_tier == "Worker" && var.sqs_dlq_enabled ? 1 : 0
+
+  name                      = "${coalesce(var.sqs_queue_name, "${var.application_name}-worker-queue")}-dlq"
+  delay_seconds             = var.sqs_queue_delay_seconds
+  max_message_size          = var.sqs_queue_max_message_size
+  message_retention_seconds = var.sqs_queue_message_retention_seconds
+  receive_wait_time_seconds = var.sqs_queue_receive_wait_time_seconds
+  visibility_timeout_seconds = var.sqs_queue_visibility_timeout_seconds
+
+  tags = var.tags
+}
+
+# Main SQS Queue para Worker
+resource "aws_sqs_queue" "worker_queue" {
+  count = var.create_sqs_queue && var.environment_tier == "Worker" ? 1 : 0
+
+  name                      = coalesce(var.sqs_queue_name, "${var.application_name}-worker-queue")
+  delay_seconds             = var.sqs_queue_delay_seconds
+  max_message_size          = var.sqs_queue_max_message_size
+  message_retention_seconds = var.sqs_queue_message_retention_seconds
+  receive_wait_time_seconds = var.sqs_queue_receive_wait_time_seconds
+  visibility_timeout_seconds = var.sqs_queue_visibility_timeout_seconds
+
+  # Dead Letter Queue configuration
+  redrive_policy = var.sqs_dlq_enabled ? jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.worker_dlq[0].arn
+    maxReceiveCount     = var.sqs_dlq_max_receive_count
+  }) : null
+
+  tags = var.tags
+}
+
+# Política de acceso para la cola principal SQS
+resource "aws_sqs_queue_policy" "worker_queue_policy" {
+  count = var.create_sqs_queue && var.environment_tier == "Worker" ? 1 : 0
+
+  queue_url = aws_sqs_queue.worker_queue[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowElasticBeanstalkWorkerAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = aws_iam_role.beanstalk_ec2_role[0].arn
+        }
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl",
+          "sqs:SendMessage"
+        ]
+        Resource = aws_sqs_queue.worker_queue[0].arn
+      }
+    ]
+  })
+}
+
+# Política de acceso para la Dead Letter Queue
+resource "aws_sqs_queue_policy" "worker_dlq_policy" {
+  count = var.create_sqs_queue && var.environment_tier == "Worker" && var.sqs_dlq_enabled ? 1 : 0
+
+  queue_url = aws_sqs_queue.worker_dlq[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowElasticBeanstalkWorkerDLQAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = aws_iam_role.beanstalk_ec2_role[0].arn
+        }
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl",
+          "sqs:SendMessage"
+        ]
+        Resource = aws_sqs_queue.worker_dlq[0].arn
+      }
+    ]
+  })
+}
+
+# Locals para determinar la URL de la cola
+locals {
+  # Determinar la URL de la cola SQS
+  effective_worker_queue_url = var.environment_tier == "Worker" ? (
+    var.create_sqs_queue ? aws_sqs_queue.worker_queue[0].url : var.worker_queue_url
+  ) : null
+  
+  # Validación de configuración SQS
+  sqs_config_invalid = var.environment_tier == "Worker" && !var.create_sqs_queue && var.worker_queue_url == null
+}
+
+# Validar que se proporcione una configuración válida para Worker
+resource "null_resource" "validate_worker_sqs_config" {
+  count = local.sqs_config_invalid ? 1 : 0
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "ERROR: For Worker environments, you must either:"
+      echo "  1. Set create_sqs_queue = true (to create a new queue), OR"
+      echo "  2. Set create_sqs_queue = false AND provide worker_queue_url (to use existing queue)"
+      exit 1
+    EOT
+  }
 }

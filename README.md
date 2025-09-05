@@ -8,6 +8,8 @@ Módulo de Terraform para desplegar aplicaciones en AWS Elastic Beanstalk. Compa
 - ✅ Versiones de aplicaciones con S3
 - ✅ Templates de configuración reutilizables
 - ✅ Ambientes Web Server y Worker
+- ✅ **Gestión automática de colas SQS para Workers**
+- ✅ **Soporte para Dead Letter Queues (DLQ)**
 - ✅ Auto-detección de solution stacks
 - ✅ Soporte completo para configuraciones personalizadas
 - ✅ **IAM Roles con políticas personalizadas**

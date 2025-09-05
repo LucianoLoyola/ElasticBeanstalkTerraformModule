@@ -161,3 +161,49 @@ output "ec2_instance_role_custom_managed_policies" {
   description = "ARNs of custom managed policies attached to the EC2 instance role"
   value       = var.ec2_instance_role_custom_managed_policies
 }
+
+# SQS Outputs (Worker environments only)
+output "sqs_queue_id" {
+  description = "ID of the created SQS queue"
+  value       = var.create_sqs_queue && var.environment_tier == "Worker" ? aws_sqs_queue.worker_queue[0].id : null
+}
+
+output "sqs_queue_arn" {
+  description = "ARN of the created SQS queue"
+  value       = var.create_sqs_queue && var.environment_tier == "Worker" ? aws_sqs_queue.worker_queue[0].arn : null
+}
+
+output "sqs_queue_url" {
+  description = "URL of the SQS queue (created or provided)"
+  value       = local.effective_worker_queue_url
+}
+
+output "sqs_queue_name" {
+  description = "Name of the created SQS queue"
+  value       = var.create_sqs_queue && var.environment_tier == "Worker" ? aws_sqs_queue.worker_queue[0].name : null
+}
+
+output "sqs_dlq_id" {
+  description = "ID of the created SQS dead letter queue"
+  value       = var.create_sqs_queue && var.environment_tier == "Worker" && var.sqs_dlq_enabled ? aws_sqs_queue.worker_dlq[0].id : null
+}
+
+output "sqs_dlq_arn" {
+  description = "ARN of the created SQS dead letter queue"
+  value       = var.create_sqs_queue && var.environment_tier == "Worker" && var.sqs_dlq_enabled ? aws_sqs_queue.worker_dlq[0].arn : null
+}
+
+output "sqs_dlq_url" {
+  description = "URL of the created SQS dead letter queue"
+  value       = var.create_sqs_queue && var.environment_tier == "Worker" && var.sqs_dlq_enabled ? aws_sqs_queue.worker_dlq[0].url : null
+}
+
+output "sqs_queue_policy_id" {
+  description = "ID of the SQS queue policy"
+  value       = var.create_sqs_queue && var.environment_tier == "Worker" ? aws_sqs_queue_policy.worker_queue_policy[0].id : null
+}
+
+output "sqs_dlq_policy_id" {
+  description = "ID of the SQS dead letter queue policy"
+  value       = var.create_sqs_queue && var.environment_tier == "Worker" && var.sqs_dlq_enabled ? aws_sqs_queue_policy.worker_dlq_policy[0].id : null
+}
