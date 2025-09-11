@@ -1,4 +1,4 @@
-# Data source para obtener el último stack solution si no se especifica
+#Data source to obtain the latest solution stack if none is specified
 data "aws_elastic_beanstalk_solution_stack" "latest" {
   count = var.solution_stack_name == null && var.platform_arn == null ? 1 : 0
 
@@ -6,16 +6,16 @@ data "aws_elastic_beanstalk_solution_stack" "latest" {
   name_regex  = var.solution_stack_name_regex
 }
 
-# Usar el stack solution obtenido si no se especifica uno
+#Use the stack solution obtained if none is specified
 locals {
-  # Seleccionar solution stack basado en prioridad
+  #Select solution stack based on priority
   solution_stack_name = var.solution_stack_name != null ? var.solution_stack_name : var.platform_arn != null ? null : "64bit Amazon Linux 2 v5.8.4 running Node.js 18"
 
-  # Referencias a los roles IAM (creados o externos)
+  #References to IAM roles (created or external)
   service_role_name = var.create_iam_roles ? aws_iam_role.beanstalk_service_role[0].name : var.service_role_name
   instance_profile_name = var.create_iam_roles ? aws_iam_instance_profile.beanstalk_ec2_profile[0].name : var.ec2_instance_role_name
 
-  # Validaciones para configuraciones conflictivas
+  #Validation for conflicting configurations
   custom_policies_with_existing_roles = !var.create_iam_roles && (
     length(var.service_role_custom_policies) > 0 ||
     length(var.ec2_instance_role_custom_policies) > 0 ||
@@ -33,7 +33,7 @@ locals {
 # CONFIGURATION VALIDATIONS
 # ==============================================================================
 
-# Validar que no se usen políticas personalizadas con roles existentes
+#Validate not to use custom policies with existing roles (when create_iam_roles = false)
 resource "null_resource" "validate_custom_policies_with_existing_roles" {
   count = local.custom_policies_with_existing_roles ? 1 : 0
 
@@ -46,7 +46,8 @@ resource "null_resource" "validate_custom_policies_with_existing_roles" {
   }
 }
 
-# Validar que no se usen nombres por defecto con roles existentes
+
+#Validate not to use default names with existing roles (when create_iam_roles = false)
 resource "null_resource" "validate_default_role_names_with_existing_roles" {
   count = local.using_default_role_names_without_creation ? 1 : 0
 
@@ -60,11 +61,11 @@ resource "null_resource" "validate_default_role_names_with_existing_roles" {
   }
 }
 
-# Segundo bloque locals para settings automáticos
+#Second locals block for automatic settings
 locals {
-  # Generate automatic settings based on simplified variables
+  #Generate automatic settings based on simplified variables
   automatic_settings = concat(
-    # VPC and Networking settings
+    #VPC and Networking settings
     var.vpc_id != null ? [{
       namespace = "aws:ec2:vpc"
       name      = "VPCId"
@@ -83,28 +84,28 @@ locals {
       value     = join(",", var.elb_subnets)
     }] : [],
 
-    # Environment Type settings
+    #Environment Type settings
     [{
       namespace = "aws:elasticbeanstalk:environment"
       name      = "EnvironmentType"
       value     = var.environment_type
     }],
 
-    # Load Balancer settings (only for LoadBalanced environments)
+    #Load Balancer settings (only for LoadBalanced environments)
     var.environment_type == "LoadBalanced" ? [{
       namespace = "aws:elasticbeanstalk:environment"
       name      = "LoadBalancerType"
       value     = var.load_balancer_type
     }] : [],
 
-    # Instance settings
+    #Instance settings
     [{
       namespace = "aws:ec2:instances"
       name      = "InstanceTypes"
       value     = join(",", var.instance_types)
     }],
 
-    # Auto Scaling settings (only for LoadBalanced environments)
+    #Auto Scaling settings (only for LoadBalanced environments)
     var.environment_type == "LoadBalanced" ? [
       {
         namespace = "aws:autoscaling:asg"
@@ -118,7 +119,7 @@ locals {
       }
     ] : [],
 
-    # Health check settings (only for Web tier with load balancer)
+    #Health check settings (only for Web tier with load balancer)
     var.environment_tier == "WebServer" && var.environment_type == "LoadBalanced" ? [
       {
         namespace = "aws:elasticbeanstalk:application"
@@ -127,7 +128,7 @@ locals {
       }
     ] : [],
 
-    # Worker settings (only for Worker tier)
+    #Worker settings (only for Worker tier)
     var.environment_tier == "Worker" && local.effective_worker_queue_url != null ? [
       {
         namespace = "aws:elasticbeanstalk:sqsd"
@@ -171,7 +172,7 @@ locals {
       }
     ] : [],
 
-    # Security Groups settings
+    #Security Groups settings
     var.create_security_groups || length(var.additional_security_group_ids) > 0 ? [{
       namespace = "aws:autoscaling:launchconfiguration"
       name      = "SecurityGroups"
@@ -181,7 +182,7 @@ locals {
       ))
     }] : [],
 
-    # Application Environment Variables
+    #Application Environment Variables
     [for key, value in var.application_environment_variables : {
       namespace = "aws:elasticbeanstalk:application:environment"
       name      = key
@@ -190,7 +191,7 @@ locals {
   )
 }
 
-# Elastic Beanstalk Application
+#Elastic Beanstalk Application
 resource "aws_elastic_beanstalk_application" "this" {
   name        = var.application_name
   description = var.application_description
@@ -208,7 +209,7 @@ resource "aws_elastic_beanstalk_application" "this" {
   tags = var.tags
 }
 
-# Elastic Beanstalk Application Version
+#Elastic Beanstalk Application Version
 resource "aws_elastic_beanstalk_application_version" "this" {
   count = var.create_application_version ? 1 : 0
 
@@ -222,7 +223,7 @@ resource "aws_elastic_beanstalk_application_version" "this" {
   tags = var.tags
 }
 
-# Elastic Beanstalk Configuration Template (opcional)
+#Elastic Beanstalk Configuration Template (optional)
 resource "aws_elastic_beanstalk_configuration_template" "this" {
   count = var.create_configuration_template ? 1 : 0
 
@@ -242,7 +243,7 @@ resource "aws_elastic_beanstalk_configuration_template" "this" {
   }
 }
 
-# Elastic Beanstalk Environment
+#Elastic Beanstalk Environment
 resource "aws_elastic_beanstalk_environment" "this" {
   name                   = var.environment_name
   application            = aws_elastic_beanstalk_application.this.name
@@ -255,7 +256,7 @@ resource "aws_elastic_beanstalk_environment" "this" {
   wait_for_ready_timeout = var.wait_for_ready_timeout
   poll_interval          = var.poll_interval
 
-  # Settings automáticos generados por las variables simplificadas
+  #Automatic settings generated from simplified variables
   dynamic "setting" {
     for_each = local.automatic_settings
     content {
@@ -265,7 +266,7 @@ resource "aws_elastic_beanstalk_environment" "this" {
     }
   }
 
-  # Settings configurados por el usuario (se agregan además de los automáticos)
+  # User-configured settings (added in addition to automatic ones)
   dynamic "setting" {
     for_each = var.environment_settings
     content {
@@ -276,7 +277,7 @@ resource "aws_elastic_beanstalk_environment" "this" {
     }
   }
 
-  # Settings automáticos para IAM (si está habilitado)
+  # IAM automatic settings (if enabled)
   dynamic "setting" {
     for_each = var.create_iam_roles && var.auto_configure_iam_settings ? [1] : []
     content {
@@ -307,10 +308,11 @@ resource "aws_elastic_beanstalk_environment" "this" {
 }
 
 # ==============================================================================
-# SECURITY GROUPS PARA ELASTIC BEANSTALK
+# SECURITY GROUPS - ELASTIC BEANSTALK
 # ==============================================================================
 
-# Security Group personalizado para las instancias EC2
+
+#Custom Security Group for EC2 instances
 resource "aws_security_group" "beanstalk_ec2_sg" {
   count = var.create_security_groups ? 1 : 0
 
@@ -323,7 +325,7 @@ resource "aws_security_group" "beanstalk_ec2_sg" {
   })
 }
 
-# Reglas de ingreso personalizables
+#Ingress custom rules
 resource "aws_security_group_rule" "ingress" {
   count = var.create_security_groups ? length(var.security_group_ingress_rules) : 0
 
@@ -341,7 +343,7 @@ resource "aws_security_group_rule" "ingress" {
   description              = lookup(var.security_group_ingress_rules[count.index], "description", null)
 }
 
-# Reglas de egreso personalizables
+#Egress custom rules
 resource "aws_security_group_rule" "egress" {
   count = var.create_security_groups ? length(var.security_group_egress_rules) : 0
 
@@ -360,10 +362,10 @@ resource "aws_security_group_rule" "egress" {
 }
 
 # ==============================================================================
-# IAM ROLES para ELASTIC BEANSTALK
+# IAM ROLES - ELASTIC BEANSTALK
 # ==============================================================================
 
-# IAM Role para el servicio de Elastic Beanstalk
+#IAM Role for the Elastic Beanstalk service
 resource "aws_iam_role" "beanstalk_service_role" {
   count = var.create_iam_roles ? 1 : 0
   
@@ -385,7 +387,7 @@ resource "aws_iam_role" "beanstalk_service_role" {
   tags = var.tags
 }
 
-# Políticas para el rol de servicio
+#Policies for the service role
 resource "aws_iam_role_policy_attachment" "beanstalk_service_health" {
   count      = var.create_iam_roles ? 1 : 0
   role       = aws_iam_role.beanstalk_service_role[0].name
@@ -398,7 +400,7 @@ resource "aws_iam_role_policy_attachment" "beanstalk_service_managed_updates" {
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy"
 }
 
-# IAM Role para las instancias EC2
+#IAM Role for the EC2 instances
 resource "aws_iam_role" "beanstalk_ec2_role" {
   count = var.create_iam_roles ? 1 : 0
   
@@ -420,7 +422,8 @@ resource "aws_iam_role" "beanstalk_ec2_role" {
   tags = var.tags
 }
 
-# Políticas para el rol de instancia EC2
+
+#Policies for the EC2 instance role
 resource "aws_iam_role_policy_attachment" "beanstalk_ec2_web_tier" {
   count      = var.create_iam_roles ? 1 : 0
   role       = aws_iam_role.beanstalk_ec2_role[0].name
@@ -439,7 +442,7 @@ resource "aws_iam_role_policy_attachment" "beanstalk_ec2_multicontainer" {
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
 }
 
-# Política personalizada para S3 y CloudWatch (opcional pero recomendada)
+#Custom policy for S3 and CloudWatch (optional)
 resource "aws_iam_role_policy" "beanstalk_ec2_additional" {
   count = var.create_iam_roles && var.attach_additional_policies ? 1 : 0
   name  = "${var.ec2_instance_role_name}-additional-policy"
@@ -469,7 +472,7 @@ resource "aws_iam_role_policy" "beanstalk_ec2_additional" {
   })
 }
 
-# Instance Profile para el rol de EC2
+#Instance Profile for EC2 Role
 resource "aws_iam_instance_profile" "beanstalk_ec2_profile" {
   count = var.create_iam_roles ? 1 : 0
   name  = var.ec2_instance_role_name
@@ -482,7 +485,7 @@ resource "aws_iam_instance_profile" "beanstalk_ec2_profile" {
 # CUSTOM IAM POLICIES
 # ==============================================================================
 
-# Custom inline policies para Service Role
+# Custom inline policies for Service Role
 resource "aws_iam_role_policy" "service_role_custom" {
   count = var.create_iam_roles ? length(var.service_role_custom_policies) : 0
   
@@ -491,7 +494,7 @@ resource "aws_iam_role_policy" "service_role_custom" {
   policy = var.service_role_custom_policies[count.index].policy
 }
 
-# Custom managed policies para Service Role
+# Custom managed policies for Service Role
 resource "aws_iam_role_policy_attachment" "service_role_custom_managed" {
   count = var.create_iam_roles ? length(var.service_role_custom_managed_policies) : 0
   
@@ -499,7 +502,7 @@ resource "aws_iam_role_policy_attachment" "service_role_custom_managed" {
   policy_arn = var.service_role_custom_managed_policies[count.index]
 }
 
-# Custom inline policies para EC2 Instance Role
+# Custom inline policies for EC2 Instance Role
 resource "aws_iam_role_policy" "ec2_instance_role_custom" {
   count = var.create_iam_roles ? length(var.ec2_instance_role_custom_policies) : 0
   
@@ -508,7 +511,7 @@ resource "aws_iam_role_policy" "ec2_instance_role_custom" {
   policy = var.ec2_instance_role_custom_policies[count.index].policy
 }
 
-# Custom managed policies para EC2 Instance Role
+# Custom managed policies for EC2 Instance Role
 resource "aws_iam_role_policy_attachment" "ec2_instance_role_custom_managed" {
   count = var.create_iam_roles ? length(var.ec2_instance_role_custom_managed_policies) : 0
   
@@ -520,7 +523,7 @@ resource "aws_iam_role_policy_attachment" "ec2_instance_role_custom_managed" {
 # SQS RESOURCES FOR WORKER ENVIRONMENTS
 # ==============================================================================
 
-# Dead Letter Queue (opcional)
+# Dead Letter Queue (optional)
 resource "aws_sqs_queue" "worker_dlq" {
   count = var.create_sqs_queue && var.environment_tier == "Worker" && var.sqs_dlq_enabled ? 1 : 0
 
@@ -534,7 +537,7 @@ resource "aws_sqs_queue" "worker_dlq" {
   tags = var.tags
 }
 
-# Main SQS Queue para Worker
+# Main SQS Queue for Worker
 resource "aws_sqs_queue" "worker_queue" {
   count = var.create_sqs_queue && var.environment_tier == "Worker" ? 1 : 0
 
@@ -554,7 +557,7 @@ resource "aws_sqs_queue" "worker_queue" {
   tags = var.tags
 }
 
-# Política de acceso para la cola principal SQS
+#Access policy for the main SQS queue
 resource "aws_sqs_queue_policy" "worker_queue_policy" {
   count = var.create_sqs_queue && var.environment_tier == "Worker" ? 1 : 0
 
@@ -582,7 +585,7 @@ resource "aws_sqs_queue_policy" "worker_queue_policy" {
   })
 }
 
-# Política de acceso para la Dead Letter Queue
+#Access policy for the Dead Letter Queue
 resource "aws_sqs_queue_policy" "worker_dlq_policy" {
   count = var.create_sqs_queue && var.environment_tier == "Worker" && var.sqs_dlq_enabled ? 1 : 0
 
@@ -610,18 +613,18 @@ resource "aws_sqs_queue_policy" "worker_dlq_policy" {
   })
 }
 
-# Locals para determinar la URL de la cola
+#Locals to determine the queue URL
 locals {
-  # Determinar la URL de la cola SQS
+  #Determine the SQS queue URL
   effective_worker_queue_url = var.environment_tier == "Worker" ? (
     var.create_sqs_queue ? aws_sqs_queue.worker_queue[0].url : var.worker_queue_url
   ) : null
   
-  # Validación de configuración SQS
+  #Validate that SQS configuration is valid for Worker environments
   sqs_config_invalid = var.environment_tier == "Worker" && !var.create_sqs_queue && var.worker_queue_url == null
 }
 
-# Validar que se proporcione una configuración válida para Worker
+#Validate that a valid configuration is provided for Worker
 resource "null_resource" "validate_worker_sqs_config" {
   count = local.sqs_config_invalid ? 1 : 0
 
